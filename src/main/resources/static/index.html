@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Security Guard - Agentic Cyber Defence</title>
+<style>
+  :root{
+    --bg:#1A1411; --card:#2A201B; --deep:#211915; --line:#3D2F27;
+    --ok:#34D399; --warm:#FB923C; --red:#F43F5E; --tx:#FBEFE6; --mu:#A8968A;
+    --okbg:rgba(52,211,153,.16); --warmbg:rgba(251,146,60,.16); --redbg:rgba(244,63,94,.18);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);
+       font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.5}
+  .wrap{max-width:1080px;margin:0 auto;padding:20px 20px 60px}
+  h1{font-size:22px;margin:0}
+  h2{font-size:17px;margin:0 0 10px}
+  .sub{color:var(--mu);font-size:13px;margin:2px 0 0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:14px}
+  .deep{background:var(--deep)}
+  .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+  .row{display:flex;gap:20px;flex-wrap:wrap}
+  .grow{flex:1;min-width:0}
+  .muted{color:var(--mu)}
+  .small{font-size:12.5px}
+  .tiny{font-size:11.5px}
+  .pill{display:inline-block;padding:3px 10px;border-radius:999px;font-weight:700;font-size:11.5px}
+  .ok{background:var(--okbg);color:var(--ok)}
+  .warn{background:var(--warmbg);color:var(--warm)}
+  .bad{background:var(--redbg);color:#FB7185}
+  .neutral{background:#3D3430;color:#BFB1A6}
+  button{font:inherit;cursor:pointer;border:none;border-radius:12px;padding:11px 16px;font-weight:700;
+         background:var(--line);color:var(--tx);transition:opacity .15s}
+  button:hover:not(:disabled){opacity:.86}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  button.primary{background:var(--ok);color:#10261D}
+  button.danger{background:var(--red);color:#fff}
+  button.warm{background:var(--warm);color:#2A1500}
+  button.ghost{background:transparent;border:1px solid var(--line);color:var(--mu)}
+  input,select{font:inherit;background:var(--deep);color:var(--tx);border:1px solid var(--line);
+               border-radius:10px;padding:9px 12px}
+  nav{display:flex;gap:6px;margin:18px 0;flex-wrap:wrap}
+  nav button{background:var(--deep);color:var(--mu);font-weight:700}
+  nav button.active{background:var(--card);color:var(--ok);border:1px solid var(--line)}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .tile{background:var(--deep);border-radius:12px;padding:12px}
+  .tile .k{font-size:22px;font-weight:800}
+  .tile .n{font-size:11.5px;color:var(--mu);text-transform:uppercase;letter-spacing:.04em}
+  .feed{border-left:3px solid var(--line);padding-left:14px;margin-left:6px}
+  .item{margin-bottom:14px}
+  .item.decision{border-left:3px solid var(--ok);padding-left:12px;margin-left:-3px}
+  .item.tool{border-left:3px solid var(--warm);padding-left:12px;margin-left:12px}
+  .item.evidence{border-left:3px solid #2F5A49;padding-left:12px;margin-left:24px;
+                 background:#1F2B25;border-radius:0 12px 12px 0;padding:10px 12px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--mu);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+  .banner{padding:12px 14px;border-radius:12px;margin-bottom:14px;font-size:13px}
+  .banner.err{background:var(--redbg);color:#FB7185;border:1px solid var(--red)}
+  .banner.info{background:var(--warmbg);color:var(--warm);border:1px solid var(--warm)}
+  .spin{display:inline-block;width:13px;height:13px;border:2px solid var(--warm);
+        border-top-color:transparent;border-radius:50%;animation:sp .8s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .case-row{display:flex;justify-content:space-between;align-items:center;gap:14px;
+            padding:12px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .case-row:last-child{border-bottom:none}
+  .checks div{display:flex;justify-content:space-between;gap:12px;padding:6px 0;
+              border-bottom:1px solid var(--line);font-size:13px}
+  .checks div:last-child{border-bottom:none}
+  .hash{color:var(--mu);font-size:11px}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:720px){.split{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="app" v-cloak>
+<div class="wrap">
+
+  <header style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap">
+    <div>
+      <h1>AI Security Guard</h1>
+      <p class="sub">Agentic vulnerability investigation &amp; remediation. A scanner finding is not a confirmed vulnerability.</p>
+    </div>
+    <div style="text-align:right">
+      <p class="tiny muted" style="margin:0 0 4px">Decision maker</p>
+      <p class="small mono" style="margin:0">{{ policyMode }}</p>
+      <p class="tiny muted" style="margin:4px 0 0">Audit chain:
+        <span :class="['pill', integrity.valid ? 'ok' : 'bad']">{{ integrity.valid ? 'INTACT' : 'BROKEN' }}</span>
+      </p>
+    </div>
+  </header>
+
+  <div v-if="error" class="banner err"><b>{{ error.message }}</b><br><span class="small">{{ error.detail }}</span></div>
+  <div v-if="busy" class="banner info"><span class="spin"></span> {{ busyMessage }}</div>
+
+  <nav>
+    <button v-for="t in tabs" :key="t.k" :class="{active: page===t.k}" @click="page=t.k">
+      {{ t.n }}<span v-if="t.k==='approval' && needsApproval" class="pill bad" style="margin-left:8px">!</span>
+    </button>
+  </nav>
+
+  <!-- ==================== OVERVIEW ==================== -->
+  <section v-if="page==='overview'">
+    <div class="card">
+      <h2>Open an investigation</h2>
+      <p class="small muted">Choose a scanner finding. The agent investigates autonomously and decides
+        for itself which capability to use next - there is no fixed tool sequence.</p>
+      <div class="row" style="align-items:center;margin-top:12px">
+        <select v-model="selectedScenario" style="min-width:220px">
+          <option v-for="s in scenarios" :key="s.key" :value="s.key">{{ s.label }}</option>
+        </select>
+        <button class="primary" @click="openCase" :disabled="busy">Investigate</button>
+      </div>
+      <p v-if="currentScenario" class="small muted" style="margin-top:12px">
+        <b>Expected:</b> {{ currentScenario.expectedOutcome }}</p>
+    </div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h2 style="margin:0">Cases</h2>
+        <button v-if="cases.length" class="ghost" @click="resetCases" :disabled="busy">
+          Clear all cases</button>
+      </div>
+      <p v-if="!cases.length" class="small muted" style="margin:10px 0 0">No cases yet. Open one above.</p>
+      <div v-for="c in cases" :key="c.caseId" class="case-row">
+        <div>
+          <p style="margin:0;font-weight:700">{{ c.caseId }} <span class="muted small">· {{ c.assetId }}</span></p>
+          <p class="tiny muted mono" style="margin:2px 0 0">{{ c.cveId }} · {{ c.evidenceCount }} evidence · {{ c.auditEventCount }} audit events</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <span :class="['pill', toneOf(c.lifecycle)]">{{ c.statusLabel }}</span>
+          <span v-if="c.findingStatus" class="pill neutral">{{ c.findingStatus }}</span>
+          <button class="ghost" @click="select(c.caseId)">Open</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card deep">
+      <h2>Why this is not a scanner dashboard</h2>
+      <p class="small" style="margin:0 0 8px">A scanner reports a version and a CVSS score. It cannot tell you
+        whether the affected version is actually running, whether the service is reachable, whether anyone is
+        exploiting it, or whether it matters. This agent gathers that evidence, and every step is recorded.</p>
+      <p class="small muted" style="margin:0">It proposes; a human decides. A consequential action cannot be
+        executed without approval, and that is enforced by the runtime rather than by asking the model nicely.</p>
+    </div>
+  </section>
+
+  <!-- ==================== INVESTIGATION ==================== -->
+  <section v-if="page==='investigation'">
+    <div v-if="!detail" class="card"><p class="small muted">Open a case first.</p></div>
+    <template v-else>
+      <div class="card">
+        <div class="row" style="justify-content:space-between">
+          <div>
+            <h2 style="margin:0">{{ detail.caseId }}</h2>
+            <p class="small muted mono" style="margin:2px 0 0">{{ detail.cveId }} · {{ detail.assetId }}</p>
+          </div>
+          <span :class="['pill', detail.statusTone]">{{ detail.statusLabel }}</span>
+        </div>
+        <p class="small muted" style="margin:12px 0 0">
+          <b style="color:var(--warm)">Scanner finding is not a confirmed vulnerability.</b>
+          A scanner result is the first piece of evidence, not a verdict.
+        </p>
+      </div>
+
+      <div class="card">
+        <h2>The agent's decisions</h2>
+        <p class="small muted" style="margin:0 0 14px">Nobody wrote this sequence. The agent chose each
+          capability from what was still missing.</p>
+        <div class="feed">
+          <div v-for="d in detail.decisions" :key="d.number" class="item decision">
+            <div class="row" style="justify-content:space-between;align-items:center">
+              <p class="tiny" style="margin:0;font-weight:800">DECISION #{{ d.number }}</p>
+              <span :class="['pill', d.decisionType==='ESCALATE' ? 'warn' : d.decisionType==='ASSESS' ? 'ok' : 'warn']">
+                {{ d.decisionType }}</span>
+            </div>
+            <p class="small" style="margin:6px 0 0">{{ d.rationale }}</p>
+            <div v-if="d.missingEvidence.length" class="tiny muted" style="margin-top:6px">
+              <b>Missing:</b> {{ d.missingEvidence.join('; ') }}</div>
+            <div v-if="d.selectedTool" class="deep tiny mono" style="margin-top:8px;padding:8px 10px;border-radius:10px">
+              {{ d.selectedTool }}({{ d.toolArguments }})
+            </div>
+            <div class="tiny muted" style="margin-top:6px">Saw: {{ d.observedEvidenceIds.join(', ') }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Evidence chain</h2>
+        <table>
+          <thead><tr><th>ID</th><th>Source</th><th>Reliability</th><th>Finding</th></tr></thead>
+          <tbody>
+            <tr v-for="e in detail.evidence" :key="e.evidenceId">
+              <td class="mono">{{ e.evidenceId }}</td>
+              <td>{{ e.source }}<div class="tiny muted">{{ e.type }}</div></td>
+              <td><span :class="['pill', e.reliability==='HIGH' ? 'ok' : e.reliability==='MEDIUM' ? 'warn' : 'bad']">{{ e.reliability }}</span></td>
+              <td>{{ e.finding }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div v-if="detail.findingStatus" class="card" :style="{borderColor: detail.statusTone==='bad' ? 'var(--red)' : detail.statusTone==='ok' ? 'var(--ok)' : 'var(--warm)'}">
+        <h2>{{ detail.findingStatus === 'UNDETERMINED' ? 'Agent decision: escalate' : 'Agent assessment' }}</h2>
+        <p class="mono" style="font-size:20px;font-weight:800;margin:4px 0 0;color:var(--warm)">{{ detail.findingStatus }}</p>
+
+        <div class="tiles" style="margin-top:14px">
+          <div class="tile">
+            <p class="n">Priority</p>
+            <p class="k" :style="{color: priorityColor(detail.priority)}">{{ detail.priority || '-' }}</p>
+            <p class="tiny muted">{{ priorityLabel(detail.priority) }}</p>
+          </div>
+          <div class="tile">
+            <p class="n">Confidence</p>
+            <p class="k" style="color:var(--ok)">{{ detail.confidence }}</p>
+            <p class="tiny muted">{{ confidenceLabel(detail.confidence) }}</p>
+          </div>
+          <div class="tile">
+            <p class="n">Action impact</p>
+            <p class="k" style="color:var(--warm)">{{ detail.actionImpact || '-' }}</p>
+            <p class="tiny muted">{{ impactLabel(detail.actionImpact) }}</p>
+          </div>
+        </div>
+
+        <p class="small" style="margin:14px 0 0">{{ detail.rationale }}</p>
+        <div v-if="detail.reasons.length" class="small" style="margin-top:10px">
+          <p class="tiny muted" style="margin:0 0 4px"><b>Why {{ detail.priority }}?</b></p>
+          <p v-for="r in detail.reasons" :key="r" style="margin:2px 0">- {{ r }}</p>
+        </div>
+
+        <div v-if="detail.proposedAction" class="deep" style="margin-top:14px;padding:14px;border-radius:12px">
+          <p class="n muted tiny" style="margin:0">Proposed action</p>
+          <p style="margin:6px 0 0;font-weight:700">{{ detail.proposedAction }}</p>
+          <p v-if="detail.requiresHumanApproval" class="small" style="margin:10px 0 0;color:var(--warm);font-weight:800">
+            HUMAN APPROVAL REQUIRED ({{ detail.actionImpact }})</p>
+          <button v-if="detail.requiresHumanApproval" class="danger" style="margin-top:12px" @click="page='approval'">
+            Review remediation proposal</button>
+        </div>
+
+        <div v-if="detail.escalationReason" class="deep" style="margin-top:14px;padding:14px;border-radius:12px;border:1px solid var(--warm)">
+          <p style="margin:0;font-weight:800;color:var(--warm)">Automatic remediation is blocked</p>
+          <p class="small muted" style="margin:6px 0 0">{{ detail.escalationReason }}</p>
+          <p class="tiny muted" style="margin:6px 0 0">Conflict status: {{ detail.conflictStatus }}</p>
+        </div>
+      </div>
+    </template>
+  </section>
+
+  <!-- ==================== APPROVAL ==================== -->
+  <section v-if="page==='approval'">
+    <div v-if="!detail" class="card"><p class="small muted">Open a case first.</p></div>
+
+    <div v-else-if="detail.approvalOutcome==='NOT_REQUIRED'" class="card">
+      <h2>No approval required</h2>
+      <p class="small muted" style="margin:0">
+        {{ detail.lifecycle === 'CLEARED'
+            ? 'This finding is NOT_AFFECTED. No action was proposed, so no human decision is needed.'
+            : 'The agent has not proposed anything consequential for this case.' }}
+      </p>
+    </div>
+
+    <div v-else-if="detail.approvalOutcome==='PENDING'" class="card">
+      <h2>High-impact action requires approval</h2>
+      <p class="small muted">The agent can investigate, assess and propose. It cannot execute a
+        consequential action without you.</p>
+
+      <div class="tiles" style="margin:16px 0">
+        <div class="tile">
+          <p class="n">Priority</p><p class="k" :style="{color: priorityColor(detail.priority)}">{{ detail.priority }}</p>
+          <p class="tiny muted">{{ priorityLabel(detail.priority) }}</p>
+        </div>
+        <div class="tile">
+          <p class="n">Confidence</p><p class="k" style="color:var(--ok)">{{ detail.confidence }}</p>
+          <p class="tiny muted">{{ confidenceLabel(detail.confidence) }}</p>
+        </div>
+        <div class="tile">
+          <p class="n">Action impact</p><p class="k" style="color:var(--warm)">{{ detail.actionImpact }}</p>
+          <p class="tiny muted">{{ impactLabel(detail.actionImpact) }}</p>
+        </div>
+      </div>
+
+      <div class="deep" style="padding:14px;border-radius:12px">
+        <p class="tiny muted" style="margin:0">Proposed action</p>
+        <p style="margin:6px 0 0;font-weight:700">{{ detail.proposedAction }}</p>
+        <p class="small muted" style="margin:10px 0 0">The remediation uses a predefined catalogued action for
+          this CVE. It cannot run anything else.</p>
+      </div>
+
+      <div class="split" style="margin-top:14px">
+        <div class="deep" style="padding:14px;border-radius:12px">
+          <p class="tiny muted" style="margin:0 0 6px">Supporting evidence</p>
+          <p v-for="e in detail.evidence" :key="e.evidenceId" class="tiny" style="margin:2px 0">
+            <span class="mono">{{ e.evidenceId }}</span> {{ e.source }}</p>
+        </div>
+        <div class="deep" style="padding:14px;border-radius:12px">
+          <p class="tiny muted" style="margin:0 0 6px">Verification plan</p>
+          <p class="tiny" style="margin:2px 0">- Check patched version</p>
+          <p class="tiny" style="margin:2px 0">- Re-run vulnerability validation</p>
+          <p class="tiny" style="margin:2px 0">- Check service health</p>
+        </div>
+      </div>
+
+      <div class="deep" style="padding:14px;border-radius:12px;margin-top:14px;border:1px solid #2F5A49">
+        <p style="margin:0;font-weight:800">Human-in-the-loop control</p>
+        <p class="small" style="margin:6px 0 0">Approval is enforced by the runtime policy layer, not merely by
+          an AI prompt. Execution requires a single-use token that only a human decision can produce - and only
+          one execution per approval.</p>
+      </div>
+
+      <div class="row" style="margin-top:16px;align-items:center">
+        <div>
+          <p class="tiny muted" style="margin:0 0 4px">Your name (recorded in the audit trail)</p>
+          <input v-model="analyst" placeholder="e.g. chris.selby" style="width:240px">
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-end">
+          <button class="primary" :disabled="!analyst.trim() || busy" @click="decide(true)">Approve &amp; execute</button>
+          <button @click="decide(false)" :disabled="!analyst.trim() || busy">Reject &amp; escalate</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-else-if="detail.approvalOutcome==='APPROVED'" class="card">
+      <p class="pill ok">APPROVED BY {{ detail.approverId }}</p>
+      <h2 style="margin-top:12px">{{ detail.lifecycle === 'RESOLVED' ? 'Case resolved' : 'Remediation in progress' }}</h2>
+
+      <div v-if="detail.remediationSteps.length" class="deep" style="padding:14px;border-radius:12px;margin-top:12px">
+        <p class="tiny muted" style="margin:0 0 8px">Controlled remediation</p>
+        <p v-for="s in detail.remediationSteps" :key="s" class="small" style="margin:3px 0">[done] {{ s }}</p>
+        <p v-if="detail.backupReference" class="tiny muted mono" style="margin:8px 0 0">backup: {{ detail.backupReference }}</p>
+      </div>
+
+      <div v-if="detail.verificationChecks.length" class="card deep" style="margin:14px 0 0">
+        <h2>Post-remediation verification</h2>
+        <p class="small muted" style="margin:0 0 8px">Independent checks, run against the changed host.</p>
+        <div class="checks">
+          <div v-for="c in detail.verificationChecks" :key="c.name">
+            <span>{{ c.name }}</span>
+            <span :class="['pill', c.passed ? 'ok' : 'bad']">{{ c.observation }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="detail.lifecycle==='RESOLVED'" class="deep" style="padding:18px;border-radius:12px;margin-top:14px;border:2px solid var(--ok);text-align:center">
+        <p style="font-size:30px;margin:0">RESOLVED</p>
+        <p class="small muted" style="margin:8px 0 0">Remediation completed and independently verified. Every
+          decision, tool call, evidence record, approval and action is in the audit trail.</p>
+        <button class="primary" style="margin-top:12px" @click="page='audit'">View audit trail</button>
+      </div>
+    </div>
+
+    <div v-else-if="detail.approvalOutcome==='REJECTED'" class="card">
+      <p class="pill bad">REJECTED BY {{ detail.approverId }}</p>
+      <h2 style="margin-top:12px">Nothing was executed</h2>
+      <p class="small muted">The case was routed to an analyst. The audit trail records that no action was taken.</p>
+      <button class="warm" style="margin-top:12px" :disabled="!analyst.trim() || busy" @click="takeOver">
+        Take over this case</button>
+    </div>
+
+    <div v-else-if="detail.lifecycle==='ESCALATED'" class="card">
+      <p class="pill warn">ESCALATED</p>
+      <h2 style="margin-top:12px">Human security review required</h2>
+      <p class="small muted">{{ detail.escalationReason }}</p>
+      <p class="small muted">Automatic remediation is disabled for this case.</p>
+      <button class="warm" style="margin-top:12px" :disabled="!analyst.trim() || busy" @click="takeOver">
+        Take over this case</button>
+    </div>
+  </section>
+
+  <!-- ==================== AUDIT ==================== -->
+  <section v-if="page==='audit'">
+    <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <div>
+          <h2 style="margin:0">Audit trail</h2>
+          <p class="small muted" style="margin:2px 0 0">Append-only and SHA-256 hash-chained. Every entry
+            depends on the one before it.</p>
+        </div>
+        <button class="ghost" @click="checkIntegrity">Verify chain</button>
+      </div>
+      <div class="banner" :class="integrity.valid ? 'info' : 'err'" style="margin:14px 0 0">
+        {{ integrity.report }}
+      </div>
+    </div>
+
+    <div v-if="detail" class="card">
+      <h2>{{ detail.caseId }}</h2>
+      <table>
+        <thead><tr><th>#</th><th>Time</th><th>Actor</th><th>Event</th><th>Result</th><th>Hash</th></tr></thead>
+        <tbody>
+          <tr v-for="a in detail.audit" :key="a.sequence">
+            <td class="mono">{{ a.sequence }}</td>
+            <td class="mono tiny">{{ a.time }}</td>
+            <td><span :class="['pill', a.actor==='Human' ? 'ok' : a.actor==='AI Agent' ? 'warn' : 'neutral']">{{ a.actor }}</span></td>
+            <td class="mono tiny">{{ a.eventType }}</td>
+            <td class="small">{{ a.result }}</td>
+            <td class="hash mono">{{ a.hashPrefix }}...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer style="margin-top:28px" class="tiny muted">
+    Approval is enforced structurally: execution requires an <span class="mono">ApprovedExecution</span>,
+    which requires a single-use <span class="mono">ApprovalToken</span>, which only a human decision can mint.
+    Remediation can only apply a predefined catalogued action, and verification produces its own evidence.
+  </footer>
+
+</div>
+</div>
+
+<!--
+  Vue is vendored locally rather than loaded from a CDN. A demonstration that breaks when the
+  network hiccups is not a demonstration, and this page is the whole UI.
+-->
+<script src="vue.global.prod.js"></script>
+<script>
+const { createApp, ref, computed, onMounted } = Vue;
+
+createApp({
+  setup() {
+    const page = ref('overview');
+    const cases = ref([]);
+    const detail = ref(null);
+    const scenarios = ref([]);
+    const selectedScenario = ref('confirmed-vulnerable');
+    const analyst = ref('');
+    const error = ref(null);
+    const busy = ref(false);
+    const busyMessage = ref('');
+    const policyMode = ref('reference policy (deterministic)');
+    const integrity = ref({ valid: true, report: 'not checked yet' });
+
+    const tabs = [
+      { k: 'overview', n: 'Overview' },
+      { k: 'investigation', n: 'Investigation' },
+      { k: 'approval', n: 'Approval' },
+      { k: 'audit', n: 'Audit' }
+    ];
+
+    const currentScenario = computed(
+      () => scenarios.value.find(s => s.key === selectedScenario.value) || null);
+
+    const needsApproval = computed(
+      () => detail.value && detail.value.approvalOutcome === 'PENDING');
+
+    // ---------------------------------------------------------------- api
+
+    async function api(path, options) {
+      const response = await fetch('/api' + path, Object.assign({
+        headers: { 'Content-Type': 'application/json' }
+      }, options || {}));
+      const text = await response.text();
+      let body = null;
+      try { body = text ? JSON.parse(text) : null; } catch (e) { body = null; }
+      if (!response.ok) {
+        const message = body && body.message ? body.message : ('HTTP ' + response.status);
+        const detailText = body && body.detail ? body.detail : text;
+        throw { message, detail: detailText };
+      }
+      return body;
+    }
+
+    async function run(label, fn) {
+      busy.value = true;
+      busyMessage.value = label;
+      error.value = null;
+      try {
+        return await fn();
+      } catch (e) {
+        error.value = { message: e.message || 'Request failed', detail: e.detail || '' };
+        return null;
+      } finally {
+        busy.value = false;
+        busyMessage.value = '';
+      }
+    }
+
+    // ---------------------------------------------------------------- actions
+
+    async function loadScenarios() {
+      scenarios.value = await api('/scenarios');
+    }
+
+    async function loadCases() {
+      cases.value = await api('/cases');
+    }
+
+    async function checkIntegrity() {
+      integrity.value = await api('/audit/integrity');
+    }
+
+    async function select(caseId) {
+      const found = await run('Loading case...', () => api('/cases/' + caseId));
+      if (found) {
+        detail.value = found;
+        page.value = 'investigation';
+      }
+    }
+
+    async function openCase() {
+      const created = await run('The agent is investigating. This takes a few seconds per decision...',
+        () => api('/cases', {
+          method: 'POST',
+          body: JSON.stringify({ scenario: selectedScenario.value })
+        }));
+      if (created) {
+        detail.value = created;
+        await loadCases();
+        await checkIntegrity();
+        page.value = 'investigation';
+      }
+    }
+
+    async function decide(approved) {
+      const updated = await run(approved
+          ? 'Recording your approval, then executing and verifying...'
+          : 'Recording your rejection...',
+        () => api('/cases/' + detail.value.caseId + '/decision', {
+          method: 'POST',
+          body: JSON.stringify({ approved: approved, approver: analyst.value.trim() })
+        }));
+      if (updated) {
+        detail.value = updated;
+        await loadCases();
+        await checkIntegrity();
+      }
+    }
+
+    async function takeOver() {
+      const updated = await run('Assigning the case...',
+        () => api('/cases/' + detail.value.caseId + '/takeover', {
+          method: 'POST',
+          body: JSON.stringify({ approved: false, approver: analyst.value.trim() })
+        }));
+      if (updated) {
+        detail.value = updated;
+        await loadCases();
+      }
+    }
+
+    async function resetCases() {
+      const done = await run('Clearing case storage...',
+        () => api('/reset', { method: 'POST' }));
+      if (done) {
+        detail.value = null;
+        page.value = 'overview';
+        await loadCases();
+        await checkIntegrity();
+      }
+    }
+
+    // ---------------------------------------------------------------- labels
+
+    function toneOf(lifecycle) {
+      if (lifecycle === 'CLEARED' || lifecycle === 'RESOLVED') return 'ok';
+      if (lifecycle === 'ASSESSED') return 'bad';
+      return 'warn';
+    }
+
+    function priorityColor(priority) {
+      if (!priority) return 'var(--mu)';
+      if (priority === 'P0' || priority === 'P1') return 'var(--red)';
+      if (priority === 'P2' || priority === 'P3') return 'var(--warm)';
+      return 'var(--ok)';
+    }
+
+    function priorityLabel(priority) {
+      const labels = {
+        P0: 'Immediate remediation', P1: 'Urgent remediation', P2: 'Scheduled remediation',
+        P3: 'Low urgency', P4: 'Routine', P5: 'Lowest urgency - still a real finding'
+      };
+      return priority ? labels[priority] : 'A human must decide the urgency';
+    }
+
+    function confidenceLabel(confidence) {
+      const labels = {
+        C0: 'Very high - several independent sources agree',
+        C1: 'High', C2: 'Moderate', C3: 'Low - evidence conflicts or is incomplete',
+        C4: 'Very low'
+      };
+      return labels[confidence] || '';
+    }
+
+    function impactLabel(impact) {
+      const labels = {
+        A0: 'Informational - no change to the target',
+        A1: 'Low impact', A2: 'Consequential - changes a running service, needs approval'
+      };
+      return impact ? labels[impact] : 'No action proposed';
+    }
+
+    onMounted(async () => {
+      await run('Connecting...', async () => {
+        await loadScenarios();
+        await loadCases();
+        await checkIntegrity();
+      });
+    });
+
+    return {
+      page, tabs, cases, detail, scenarios, selectedScenario, analyst,
+      error, busy, busyMessage, policyMode, integrity, currentScenario, needsApproval,
+      openCase, select, decide, takeOver, checkIntegrity, resetCases,
+      toneOf, priorityColor, priorityLabel, confidenceLabel, impactLabel
+    };
+  }
+}).mount('#app');
+</script>
+</body>
+</html>

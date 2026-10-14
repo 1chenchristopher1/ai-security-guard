@@ -1,0 +1,27 @@
+# Build output
+target/
+
+# Portable distribution staging and archive. Contains a bundled Java runtime
+# (tens of megabytes) and a key template; rebuilt on demand by package-portable.cmd.
+build-portable/
+portable-test/
+AI-Security-Guard-portable.zip
+
+# Local Maven repository.
+#
+# It lives inside the workspace because the file sandbox permits writes only under the session
+# workspace, while a repository under %USERPROFILE%\.m2 can be read but not updated. It is a
+# local build cache, not source, so it is not committed.
+.m2repo/
+
+# Browser profile created when screenshotting the UI headlessly
+.chrome-profile/
+*.png
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project

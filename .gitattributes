@@ -1,0 +1,32 @@
+# Line-ending policy.
+#
+# Without this, Git's autocrlf setting rewrites line endings on checkout and
+# every text file shows as modified on a fresh clone. That matters more here than
+# usual: start.cmd and the other launchers are batch files that must keep the
+# line endings cmd.exe expects, and a stray conversion is the sort of thing that
+# only shows up on someone else's machine.
+
+# Batch files MUST be CRLF, or cmd.exe mis-parses them.
+*.cmd text eol=crlf
+
+# The PowerShell build and verification scripts are Windows-only too.
+*.ps1 text eol=crlf
+
+# Source and documentation stay LF, which is what the tooling expects.
+*.java  text eol=lf
+*.xml   text eol=lf
+*.md    text eol=lf
+*.properties text eol=lf
+*.html  text eol=lf
+*.js    text eol=lf
+
+# The Maven wrapper's properties file is read by the wrapper script.
+mvnw.cmd text eol=crlf
+
+# Binary: never touch these.
+*.jar   binary
+*.png   binary
+*.zip   binary
+
+# Exported archives and diffs.
+*.pdf   binary

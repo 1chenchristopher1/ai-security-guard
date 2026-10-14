@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI Security Guard · Agentic Cyber Defence</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue@3.4.38/dist/vue.global.prod.js"></script>
+<style>
+:root{--bg:#1A1411;--card:#2A201B;--deep:#211915;--line:#3D2F27;--ok:#34D399;--warm:#FB923C;--red:#F43F5E;--tx:#FBEFE6;--mu:#A8968A;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highlight-color:transparent}
+[v-cloak]{display:none}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:0 6px 18px rgba(0,0,0,.28)}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-weight:800;font-size:11px;letter-spacing:.02em}
+.pg{background:rgba(52,211,153,.16);color:#34D399}.po{background:rgba(251,146,60,.16);color:#FDBA74}.pr{background:rgba(244,63,94,.18);color:#FB7185}.py{background:#3D3430;color:#BFB1A6}
+.tap{transition:transform .12s}.tap:active{transform:scale(.96)}
+.spin{animation:sp .8s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
+.in{animation:fi .45s ease-out}@keyframes fi{from{opacity:0;transform:translateY(10px)}}
+.sheet-enter-from,.sheet-leave-to{transform:translateY(100%)}.sheet-enter-active,.sheet-leave-active{transition:transform .3s}
+.fade-enter-from,.fade-leave-to{opacity:0}.fade-enter-active,.fade-leave-active{transition:opacity .25s}
+@media (prefers-reduced-motion:reduce){.spin,.in{animation:none}}
+button:focus-visible{outline:3px solid var(--ok);outline-offset:2px}
+</style>
+</head>
+<body>
+<div id="app" v-cloak class="max-w-lg mx-auto min-h-screen">
+
+<!-- Header + scenario switcher -->
+<header class="sticky top-0 z-20 px-4 pt-3 pb-3" style="background:rgba(26,20,17,.96);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)">
+  <div class="flex items-center justify-between">
+    <div><p class="font-extrabold text-lg leading-tight">🛡️ AI Security Guard</p><p class="text-xs" style="color:var(--mu)">Agentic Vulnerability Investigation &amp; Remediation</p></div>
+  </div>
+  <div class="flex gap-1 mt-3 p-1 rounded-xl" style="background:var(--deep)" role="tablist" aria-label="Demo scenario">
+    <button v-for="(s,k) in SC" :key="k" @click="load(k)" class="flex-1 py-2 rounded-lg text-xs font-bold tap" :style="key===k?'background:var(--ok);color:#10261D':'color:var(--mu)'">{{s.label}}</button>
+  </div>
+</header>
+
+<main class="px-4 pt-4" :style="{paddingBottom:bar?'150px':'110px'}">
+
+<!-- ================= OVERVIEW ================= -->
+<section v-if="page==='overview'" class="space-y-4">
+  <div class="card p-5" style="background:linear-gradient(135deg,#123B2E,#2A201B)">
+    <div class="flex items-center gap-4">
+      <div class="text-6xl">🛡️</div>
+      <div><p class="text-sm" style="color:var(--mu)">Security Score</p><p class="text-5xl font-extrabold" style="color:var(--ok)">{{c.phase==='resolved'?100:95}}</p></div>
+    </div>
+    <p class="text-xs mt-4 pt-3 leading-relaxed" style="color:var(--mu);border-top:1px solid #2F5A49">AI Agent is monitoring 12 assets<br>{{c.phase==='resolved'||c.phase==='cleared'?9:8}} investigations completed automatically</p>
+  </div>
+
+  <div class="card p-5" :style="{borderColor:ph.color}">
+    <p class="text-lg font-extrabold">{{ph.title}}</p>
+    <p class="mono text-xs mt-1" style="color:var(--mu)">{{sc.id}} · {{sc.asset}}</p>
+    <p class="mono text-xs" style="color:var(--mu)">CVE-2021-41773 · Apache HTTP Server</p>
+    <div class="grid grid-cols-2 gap-3 mt-4 text-sm">
+      <div><p class="text-xs" style="color:var(--mu)">Agent Status</p><span class="pill" :class="ph.cls">{{ph.pill}}</span></div>
+      <div><p class="text-xs" style="color:var(--mu)">Evidence Collected</p><p class="font-extrabold">{{c.evidence.length}} / 5</p></div>
+      <div><p class="text-xs" style="color:var(--mu)">Finding Status</p><p class="font-bold mono text-xs pt-1">{{c.assessment?c.assessment.status:'PENDING'}}</p></div>
+      <div><p class="text-xs" style="color:var(--mu)">Confidence</p><p class="font-bold text-xs pt-1">{{c.assessment?c.assessment.conf+' – '+c.assessment.confLabel:'Evaluating'}}</p></div>
+    </div>
+    <div v-if="c.assessment" class="mt-3 flex gap-2"><span class="pill" :class="c.assessment.cls">{{c.assessment.priority}}</span><span class="pill py">{{c.assessment.pLabel}}</span></div>
+    <p class="text-xs mt-4" style="color:var(--mu)">Current Agent Goal</p>
+    <p class="text-sm font-semibold leading-snug">{{c.phase==='investigating'?goal:ph.goal}}</p>
+    <button @click="page=c.phase==='assessed'?'approval':'investigation'" class="tap w-full mt-4 py-4 rounded-2xl text-lg font-extrabold" :style="c.phase==='assessed'?'background:var(--red);color:#fff':'background:var(--ok);color:#10261D'">{{c.phase==='assessed'?'Review & Approve':'View AI Investigation'}}</button>
+  </div>
+
+  <div class="card p-5 text-center" style="background:var(--deep)">
+    <p class="font-extrabold leading-snug">Autonomous Investigation.<br>Evidence-Based Decisions.<br>Human-Controlled Action.</p>
+    <div class="text-xs mt-3 space-y-1" style="color:var(--mu)"><p>The Agent investigates autonomously.</p><p>Evidence supports every assessment.</p><p>Humans retain control over consequential actions.</p></div>
+  </div>
+</section>
+
+<!-- ================= INVESTIGATION ================= -->
+<section v-if="page==='investigation'" class="space-y-4">
+  <div><h1 class="text-2xl font-extrabold">AI Agent Investigation</h1><p class="text-sm" style="color:var(--mu)">The Agent is autonomously collecting and correlating security evidence.</p></div>
+  <div class="card p-4"><p class="mono text-xs" style="color:var(--mu)">{{sc.id}} · {{sc.asset}}</p><p class="font-bold mt-1">CVE-2021-41773 · Initial evidence: {{sc.scanner}}</p>
+    <p class="text-xs mt-2 px-3 py-2 rounded-xl" style="background:var(--deep);color:var(--mu)"><b style="color:var(--warm)">Scanner Finding ≠ Confirmed Vulnerability.</b> A scanner result is only the first piece of evidence.</p></div>
+  <div class="flex flex-wrap items-center gap-1 text-[11px] font-bold" style="color:var(--mu)">
+    <span v-for="(l,i) in loop" :key="l"><span class="pill py">{{l}}</span><span v-if="i<loop.length-1"> › </span></span>
+  </div>
+
+  <div v-for="f in feed" :key="f.n" class="in">
+    <!-- Decision -->
+    <div v-if="f.kind==='decision'" class="card p-4" style="border-left:4px solid var(--ok)">
+      <div class="flex justify-between items-center"><p class="text-xs font-extrabold">🤖 AGENT DECISION #{{f.no}}</p><span class="pill" :class="f.cls">{{f.decision}}</span></div>
+      <p class="text-xs mt-1" style="color:var(--mu)">{{DEC[f.decision]}}</p>
+      <div class="grid grid-cols-2 gap-3 mt-3 text-xs">
+        <div><p class="font-bold mb-1" style="color:var(--ok)">Current Evidence</p><p v-for="e in f.current" class="leading-snug">✓ {{e}}</p></div>
+        <div><p class="font-bold mb-1" style="color:var(--warm)">Missing Evidence</p><p v-for="e in f.missing" class="leading-snug">• {{e}}</p><p v-if="!f.missing.length" style="color:var(--mu)">None blocking</p></div>
+      </div>
+      <p class="text-xs mt-3 font-bold" style="color:var(--mu)">Decision Rationale</p>
+      <p class="text-sm leading-snug">{{f.rationale}}</p>
+      <div v-if="f.tool" class="mt-3 p-3 rounded-xl text-xs" style="background:var(--deep)"><p style="color:var(--mu)">Selected Tool</p><p class="mono font-bold" style="color:var(--ok)">{{f.tool}}</p><p class="mt-1 leading-snug">{{f.toolWhy}}</p></div>
+    </div>
+    <!-- Tool -->
+    <div v-else-if="f.kind==='tool'" class="card p-4 ml-4">
+      <div class="flex justify-between items-center"><p class="text-xs font-extrabold">🔧 TOOL EXECUTION</p>
+        <span class="pill" :class="f.status==='RUNNING'?'po':f.status==='SUCCESS'?'pg':'pr'">{{f.status}}</span></div>
+      <p class="mono text-sm mt-2">{{f.tool}}(<span style="color:var(--mu)">{{f.arg}}</span>)</p>
+      <p v-if="f.status==='RUNNING'" class="text-xs mt-2 flex items-center gap-2" style="color:var(--warm)"><span class="spin inline-block w-3 h-3 rounded-full border-2" style="border-color:var(--warm);border-top-color:transparent"></span>Executing...</p>
+      <p v-else class="text-sm font-bold mt-2">Result: {{f.out}}</p>
+    </div>
+    <!-- Evidence -->
+    <div v-else-if="f.kind==='evidence'" class="card p-4 ml-8" style="border-color:#2F5A49;background:#1F2B25">
+      <div class="flex justify-between items-center"><p class="text-xs font-extrabold" style="color:var(--ok)">📎 NEW EVIDENCE</p><span class="mono pill pg">{{f.e.id}}</span></div>
+      <p class="text-xs mt-2" style="color:var(--mu)">{{f.e.type}} · Source: <span class="mono">{{f.e.src}}</span> · {{f.e.time}}</p>
+      <p class="text-sm mt-1 leading-snug">{{f.e.finding}}</p>
+      <p class="text-[11px] mt-2" style="color:var(--mu)">Tool result → Evidence → back into the Agent decision loop</p>
+    </div>
+  </div>
+
+  <div v-if="c.phase==='investigating'" class="text-center text-xs py-2 flex items-center justify-center gap-2" style="color:var(--warm)"><span class="spin inline-block w-3 h-3 rounded-full border-2" style="border-color:var(--warm);border-top-color:transparent"></span>Agent is reassessing the case...</div>
+
+  <!-- Assessment -->
+  <div v-if="c.assessment" class="card p-5 in" :style="{borderColor:c.assessment.color,borderWidth:'2px'}">
+    <p class="text-xs font-extrabold" style="color:var(--mu)">{{c.assessment.escalate?'⚠️ AGENT DECISION: ESCALATE':'📋 AGENT ASSESSMENT'}}</p>
+    <p class="mono text-xl font-extrabold mt-1" :style="{color:c.assessment.color}">{{c.assessment.status}}</p>
+    <div class="grid grid-cols-2 gap-3 mt-3 text-sm">
+      <div class="rounded-xl p-3" style="background:var(--deep)"><p class="text-xs" style="color:var(--mu)">Priority</p><p class="font-extrabold">{{c.assessment.priority}} – {{c.assessment.pLabel}}</p></div>
+      <div class="rounded-xl p-3" style="background:var(--deep)"><p class="text-xs" style="color:var(--mu)">Confidence</p><p class="font-extrabold">{{c.assessment.conf}} – {{c.assessment.confLabel}}</p></div>
+    </div>
+    <p class="text-sm mt-3 leading-snug">{{c.assessment.note}}</p>
+    <div class="mt-3 text-xs"><p class="font-bold mb-1" style="color:var(--mu)">Supporting Evidence</p><p v-for="e in c.evidence" class="leading-snug">{{e.id}} · {{e.short}}</p></div>
+    <div v-if="c.assessment.why.length" class="mt-3 text-xs"><p class="font-bold mb-1" style="color:var(--mu)">Why {{c.assessment.priority}}?</p><p v-for="w in c.assessment.why">✓ {{w}}</p></div>
+
+    <div v-if="c.assessment.stop" class="mt-4 p-4 rounded-xl" style="background:#1F2B25"><p class="font-extrabold" style="color:var(--ok)">⏹ STOP INVESTIGATION</p><p class="text-sm mt-1">No remediation required.</p><p class="text-xs mt-1" style="color:var(--mu)">Runtime evidence confirms that the affected vulnerable version is not present. The Agent did not blindly trust the scanner and no approval is requested.</p></div>
+    <div v-if="c.assessment.escalate" class="mt-4 p-4 rounded-xl" style="background:#33241A"><p class="font-extrabold" style="color:var(--warm)">👤 Human Security Review Required</p><p class="text-xs mt-1" style="color:var(--mu)">Conflicting evidence prevents a reliable automated assessment. Automatic remediation is disabled.</p></div>
+    <div v-if="c.assessment.action" class="mt-4 p-4 rounded-xl" style="background:var(--deep)"><p class="text-xs" style="color:var(--mu)">Proposed Defensive Action</p><p class="font-bold">{{c.assessment.action}}</p><p class="text-xs mt-1">Action Impact: <b style="color:var(--warm)">A2 – Consequential Action</b></p><p class="mt-2 font-extrabold text-sm" style="color:var(--warm)">🔐 HUMAN APPROVAL REQUIRED</p></div>
+    <button v-if="c.assessment.action" @click="page='approval'" class="tap w-full mt-4 py-4 rounded-2xl text-lg font-extrabold" style="background:var(--red);color:#fff">Review Remediation Proposal</button>
+  </div>
+
+  <button @click="drawer=true" class="tap w-full py-4 rounded-2xl font-extrabold" style="background:var(--card);border:2px solid var(--warm);color:var(--warm)">🧾 View Evidence Chain ({{c.evidence.length}})</button>
+</section>
+
+<!-- ================= APPROVAL ================= -->
+<section v-if="page==='approval'" class="space-y-4">
+  <!-- no approval needed -->
+  <div v-if="!['assessed','remediating','verifying','resolved'].includes(c.phase)" class="card p-6 text-center mt-4">
+    <p class="text-5xl">{{c.phase==='escalated'?'👤':c.phase==='cleared'?'✅':'⏳'}}</p>
+    <p class="text-xl font-extrabold mt-3">{{c.phase==='escalated'?'Human Security Review Required':c.phase==='cleared'?'No approval required':'Nothing to approve yet'}}</p>
+    <p class="text-sm mt-2" style="color:var(--mu)">{{c.phase==='escalated'?'The Agent refused to force a low-confidence verdict. Remediation is blocked until a human reviews the evidence.':c.phase==='cleared'?'This finding is NOT_AFFECTED. No action was proposed, so no human decision is needed.':'The Agent is still investigating.'}}</p>
+    <button v-if="c.phase==='escalated'&&!c.taken" @click="takeOver" class="tap w-full mt-5 py-4 rounded-2xl font-extrabold" style="background:var(--warm);color:#2A1500">Take over case</button>
+    <p v-if="c.taken" class="mt-4 pill pg">CASE ASSIGNED TO HUMAN ANALYST</p>
+  </div>
+
+  <template v-else>
+    <h1 class="text-2xl font-extrabold leading-tight">{{c.phase==='assessed'?'🚨 High-Impact Action Requires Approval':c.phase==='resolved'?'✅ Case Resolved':'⚙️ Remediation In Progress'}}</h1>
+
+    <template v-if="c.phase==='assessed'">
+      <div v-for="k in classes" :key="k.k" class="card p-4 flex gap-4 items-start">
+        <div class="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl font-extrabold shrink-0" :style="{background:k.bg,color:k.c}">{{k.k}}</div>
+        <div><p class="text-xs" style="color:var(--mu)">{{k.n}}</p><p class="font-extrabold">{{k.t}}</p><p class="text-xs mt-1 leading-snug" style="color:var(--mu)">{{k.d}}</p></div>
+      </div>
+      <div class="card p-5 space-y-2">
+        <p class="font-extrabold">🛠️ Proposed Action</p><p class="text-sm">Upgrade vulnerable Apache HTTP Server to patched version.</p>
+        <div class="grid grid-cols-1 gap-1 text-xs pt-2" style="color:var(--mu)"><p>Estimated Duration: <b class="mono" style="color:var(--tx)">~10 seconds</b></p><p>Expected Impact: <b style="color:var(--tx)">Brief service interruption possible</b></p><p>Safety Measure: <b style="color:var(--tx)">Automatic backup before remediation</b></p></div>
+        <p class="text-xs font-bold pt-2" style="color:var(--mu)">Verification Plan</p><p class="text-xs">✓ Check patched version</p><p class="text-xs">✓ Re-run vulnerability validation</p><p class="text-xs">✓ Check service health</p>
+      </div>
+      <div class="card p-5" style="background:#1F2B25;border-color:#2F5A49">
+        <p class="font-extrabold">🔐 Human-in-the-Loop Control</p>
+        <p class="text-sm mt-2 leading-snug">The Agent can investigate, assess and propose remediation autonomously.</p>
+        <p class="text-sm mt-1 leading-snug">It cannot execute A2 consequential actions without explicit human approval.</p>
+        <p class="text-sm mt-1 leading-snug" style="color:var(--ok)">Approval is enforced by the runtime policy layer, not merely by an AI prompt.</p>
+      </div>
+    </template>
+
+    <template v-else>
+      <div class="card p-4 flex items-center gap-3" style="border-color:var(--ok)"><span class="text-2xl">🔐</span><div><p class="text-xs" style="color:var(--mu)">Approval Gate</p><p class="font-extrabold" style="color:var(--ok)">APPROVED BY HUMAN</p></div></div>
+      <div class="card p-5 space-y-4">
+        <p class="text-xs font-extrabold">⚙️ CONTROLLED REMEDIATION <span class="pill ml-1" :class="c.phase==='remediating'?'po':'pg'">{{c.phase==='remediating'?'EXECUTING':'DONE'}}</span></p>
+        <div v-for="(s,i) in steps" :key="s" class="flex items-center gap-3" :style="{opacity:ex.step<i?.35:1}">
+          <div class="w-9 h-9 rounded-full flex items-center justify-center shrink-0" :style="{background:ex.step>i?'var(--ok)':ex.step===i?'var(--warm)':'var(--line)'}">
+            <span v-if="ex.step>i" style="color:#10261D">✓</span><span v-else-if="ex.step===i" class="spin inline-block w-4 h-4 rounded-full border-2" style="border-color:#2A1500;border-top-color:transparent"></span></div>
+          <p class="font-semibold text-sm">{{s}}</p></div>
+      </div>
+      <div v-if="ex.ver.length" class="card p-5 in">
+        <p class="text-xs font-extrabold">🔍 POST-REMEDIATION VERIFICATION</p>
+        <p class="mono text-xs mt-1" style="color:var(--ok)">verify_remediation({{sc.asset}})</p>
+        <div v-for="v in ex.ver" :key="v[0]" class="flex justify-between items-center mt-3 text-sm"><span>{{v[0]}}</span><span class="pill pg mono">{{v[1]}}</span></div>
+      </div>
+      <div v-if="c.phase==='resolved'" class="card p-6 text-center in" style="border:2px solid var(--ok)">
+        <p class="text-5xl">✅</p><p class="text-2xl font-extrabold mt-2" style="color:var(--ok)">RESOLVED</p><p class="mono text-xs mt-1">Finding Status: RESOLVED</p>
+        <p class="text-sm mt-3 leading-snug">Remediation successfully completed and independently verified.</p>
+        <p class="text-xs mt-2 leading-snug" style="color:var(--mu)">All decisions, tool calls, evidence, approval and actions have been recorded in the Audit Trail.</p>
+        <button @click="page='audit'" class="tap w-full mt-5 py-4 rounded-2xl text-lg font-extrabold" style="background:var(--ok);color:#10261D">View Audit Trail</button>
+      </div>
+    </template>
+  </template>
+</section>
+
+<!-- ================= AUDIT ================= -->
+<section v-if="page==='audit'" class="space-y-4">
+  <div><h1 class="text-2xl font-extrabold">Audit Trail</h1><p class="text-sm" style="color:var(--mu)">Every Agent decision and consequential action is traceable.</p></div>
+  <div class="card p-4 space-y-4">
+    <div v-for="(a,i) in audit" :key="i" class="flex gap-3 in">
+      <div class="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-lg" style="background:var(--deep)">{{ICON[a.actor]}}</div>
+      <div class="flex-1 min-w-0">
+        <div class="flex justify-between gap-2"><p class="mono text-xs" style="color:var(--mu)">{{a.time}}</p><span class="pill" :class="a.actor==='Human'?'pg':a.actor==='AI Agent'?'po':'py'">{{a.actor}}</span></div>
+        <p class="font-bold text-sm leading-snug">{{a.type}}</p>
+        <p class="mono text-xs mt-0.5" style="color:var(--mu)">Result: {{a.result}}</p>
+      </div>
+    </div>
+    <p v-if="!audit.length" class="text-sm" style="color:var(--mu)">No events yet.</p>
+  </div>
+</section>
+</main>
+
+<!-- Approval bar -->
+<div v-if="bar" class="fixed bottom-0 inset-x-0 z-30" style="background:#120D0B;border-top:1px solid var(--line);padding:14px 16px calc(14px + env(safe-area-inset-bottom,0px))">
+  <div class="max-w-lg mx-auto flex gap-3">
+    <button @click="reject" class="tap w-[36%] py-5 rounded-2xl font-bold leading-tight" style="background:#4A3F39;color:#CFC2B8">Reject &amp; Escalate</button>
+    <button @click="approve" class="tap flex-1 py-5 rounded-2xl text-lg font-extrabold" style="background:var(--ok);color:#10261D;box-shadow:0 0 24px rgba(52,211,153,.45)">Approve &amp; Execute</button>
+  </div>
+</div>
+<!-- Bottom nav -->
+<nav v-else class="fixed bottom-0 inset-x-0 z-30" style="background:#120D0B;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)">
+  <div class="max-w-lg mx-auto grid grid-cols-4">
+    <button v-for="t in tabs" :key="t.k" @click="page=t.k" class="tap relative py-3 flex flex-col items-center gap-0.5" :style="{color:page===t.k?'var(--ok)':'var(--mu)'}">
+      <span class="text-2xl">{{t.i}}</span><span class="text-xs font-bold">{{t.n}}</span>
+      <span v-if="t.k==='approval'&&c.phase==='assessed'" class="absolute top-2 right-[26%] w-3 h-3 rounded-full" style="background:var(--red)"></span>
+    </button>
+  </div>
+</nav>
+
+<!-- Evidence drawer -->
+<transition name="fade"><div v-if="drawer" @click="drawer=false" class="fixed inset-0 z-40" style="background:rgba(0,0,0,.65)"></div></transition>
+<transition name="sheet"><div v-if="drawer" class="fixed bottom-0 inset-x-0 z-50 max-w-lg mx-auto p-5 rounded-t-3xl overflow-y-auto" style="background:var(--card);max-height:85vh;padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))">
+  <p class="text-xl font-extrabold">🧾 Evidence Chain</p>
+  <p class="text-sm mt-1" style="color:var(--mu)">The AI's judgement is not a gut feeling: every key conclusion traces back to evidence.</p>
+  <div class="space-y-3 mt-4">
+    <div v-for="e in c.evidence" :key="e.id" class="rounded-2xl p-3" style="background:var(--bg);border:1px solid var(--line)">
+      <div class="flex justify-between"><span class="mono font-extrabold" style="color:var(--ok)">{{e.id}}</span><span class="pill" :class="e.rel==='High'?'pg':e.rel==='Inconclusive'?'pr':'po'">{{e.rel}} reliability</span></div>
+      <p class="font-bold text-sm mt-1">{{e.type}}</p><p class="text-sm leading-snug">{{e.finding}}</p>
+      <p class="mono text-xs mt-1" style="color:var(--mu)">Source: {{e.src}} · {{e.time}}</p></div>
+  </div>
+  <p class="mt-4 p-3 rounded-2xl text-xs font-semibold leading-snug" style="background:rgba(251,146,60,.14);color:#FDBA74">Assessments must be supported by traceable evidence. The AI Agent cannot independently execute consequential remediation.</p>
+  <button @click="drawer=false" class="tap w-full mt-4 py-4 rounded-2xl font-extrabold" style="background:var(--warm);color:#2A1500">Close</button>
+</div></transition>
+<transition name="fade"><div v-if="toast" class="fixed top-24 inset-x-4 max-w-sm mx-auto z-50 card p-4 text-center font-bold text-sm">{{toast}}</div></transition>
+</div>
+
+<script>
+const {createApp,ref,reactive,computed,onMounted}=Vue;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+/* ---------- Simulated world (what the tools can "see") ---------- */
+const SC={
+  pos:{label:'Confirmed',id:'CASE-VUL-001',asset:'customer-portal-prod-01',scanner:'Scanner reports potential vulnerability.',claimed:null,
+    world:{runtime:'2.4.49',kev:true,internet:true,env:'PRODUCTION',crit:'HIGH'}},
+  neg:{label:'Not Affected',id:'CASE-VUL-002',asset:'internal-wiki-staging-02',scanner:'Scanner reports potential vulnerable Apache version.',claimed:null,
+    world:{runtime:'2.4.58',kev:true,internet:false,env:'STAGING',crit:'LOW'}},
+  conf:{label:'Evidence Conflict',id:'CASE-VUL-003',asset:'partner-api-prod-03',scanner:'Scanner reports Apache 2.4.49.',claimed:'2.4.49',
+    world:{runtime:'2.4.58',kev:true,internet:true,env:'PRODUCTION',crit:'HIGH'}}
+};
+const isVuln=v=>v==='2.4.49';
+
+/* ---------- Tool registry: tools return results, results become Evidence ---------- */
+const TOOLS={
+  inspect_service:{why:'Runtime service information is required before vulnerability status can be confirmed.',src:'inspect_service',short:'Runtime Version',
+    run:w=>({status:'SUCCESS',out:`Apache HTTP Server ${w.runtime}`,type:'Runtime Service Evidence',finding:`Apache HTTP Server ${w.runtime} confirmed running on the target asset.`,rel:'High',facts:{runtime:w.runtime}})},
+  lookup_kev:{why:'Known exploitation evidence materially affects remediation priority.',src:'CISA KEV',short:'Known Exploitation',
+    run:w=>({status:'SUCCESS',out:w.kev?'MATCH FOUND · CISA Known Exploited Vulnerabilities':'NO MATCH',type:'Threat Intelligence Evidence',finding:w.kev?'CVE-2021-41773 is listed as a known exploited vulnerability.':'CVE-2021-41773 is not listed as exploited.',rel:'High',facts:{kev:!!w.kev}})},
+  get_asset_context:{why:'Internet exposure and business criticality determine how urgent remediation is.',src:'get_asset_context',short:'Asset Context',
+    run:w=>({status:'SUCCESS',out:`Internet Facing: ${w.internet?'YES':'NO'} · ${w.env} · Criticality ${w.crit}`,type:'Asset Context Evidence',finding:`Internet-facing: ${w.internet?'YES':'NO'}. Environment: ${w.env}. Business criticality: ${w.crit}.`,rel:'High',facts:{asset:{internet:w.internet,env:w.env,crit:w.crit}}})},
+  verify_package_manifest:{why:'Scanner and runtime evidence disagree. An independent source is needed to break the tie.',src:'verify_package_manifest',short:'Independent Verification',
+    run:()=>({status:'FAILED',out:'UNAVAILABLE · package manifest unreadable',type:'Independent Verification (inconclusive)',finding:'Package manifest could not be read. The version conflict cannot be resolved.',rel:'Inconclusive',facts:{manifest:'UNAVAILABLE'}})}
+};
+const DEC={INVESTIGATE:'AI thinks the evidence is not enough yet and is autonomously looking for the next piece.',ASSESS:'The evidence is now sufficient, so the AI can form a judgement.',ESCALATE:'Evidence conflicts or is insufficient. The AI refuses to force a verdict and hands over to a human.'};
+
+/* ---------- Agent policy: decides from CURRENT EVIDENCE, not from a fixed script ---------- */
+function decide(c,sc){
+  const f=c.facts,cur=c.evidence.map(e=>`${e.id} ${e.short}`);
+  const inv=(tool,missing,rationale)=>({decision:'INVESTIGATE',cur,missing,rationale,tool});
+  if(!f.runtime) return inv('inspect_service',['Actual runtime version','Vulnerability applicability'],'Scanner severity alone is insufficient to confirm that the running service is actually vulnerable.');
+  if(!isVuln(f.runtime)){
+    if(sc.claimed&&sc.claimed!==f.runtime&&!f.manifest) return inv('verify_package_manifest',['Independent confirmation of runtime version'],`Scanner says ${sc.claimed} but runtime inspection says ${f.runtime}. The Agent needs a second independent source.`);
+    if(f.manifest==='UNAVAILABLE') return {decision:'ESCALATE',cur,missing:['Reliable resolution of version conflict'],rationale:'Conflicting evidence prevents a reliable automated assessment.',a:{status:'UNDETERMINED',priority:'—',pLabel:'Pending human review',cls:'py',conf:'C3',confLabel:'Low Confidence',color:'#FB923C',escalate:true,why:[],note:'Conflicting evidence prevents a reliable automated assessment.'}};
+    return {decision:'ASSESS',cur,missing:[],rationale:`Runtime evidence shows version ${f.runtime}, which is outside the affected range. The scanner finding is not supported.`,a:{status:'NOT_AFFECTED',priority:'P5',pLabel:'No Action Needed',cls:'pg',conf:'C0',confLabel:'Very High Confidence',color:'#34D399',stop:true,why:[],note:'Runtime evidence directly contradicts the scanner finding.'}};
+  }
+  if(f.kev===undefined) return inv('lookup_kev',['Real-world exploitation status','Internet exposure','Asset criticality'],'Known exploitation evidence materially affects remediation priority.');
+  if(!f.asset) return inv('get_asset_context',['Asset exposure','Business criticality'],'Exposure and business value decide how urgent a confirmed vulnerability is.');
+  const p0=f.kev&&f.asset.internet&&f.asset.env==='PRODUCTION';
+  return {decision:'ASSESS',cur,missing:[],rationale:'Evidence is sufficient and consistent across independent sources. The Agent can form an assessment.',a:{status:'CONFIRMED_VULNERABLE',priority:p0?'P0':'P2',pLabel:p0?'Immediate Remediation':'Scheduled Remediation',cls:p0?'pr':'po',conf:'C0',confLabel:'Very High Confidence',color:'#F43F5E',action:'Upgrade Apache HTTP Server to a patched version.',
+    why:['Vulnerable runtime confirmed','Internet-facing service','Production asset','Known exploitation in the wild'],note:'Multiple independent evidence sources consistently support this assessment.'}};
+}
+
+createApp({setup(){
+  const key=ref('pos'),page=ref('overview'),drawer=ref(false),toast=ref('');
+  const c=reactive({phase:'idle',evidence:[],facts:{},assessment:null,taken:false});
+  const feed=ref([]),audit=ref([]),ex=reactive({step:-1,ver:[]});
+  let run=0,clock=0,n=0,dno=0;
+  const sc=computed(()=>SC[key.value]);
+  const bar=computed(()=>page.value==='approval'&&c.phase==='assessed');
+  const goal='Determine whether the scanner finding represents a real exploitable vulnerability.';
+  const PH={investigating:{title:'🔎 Finding Under Investigation',pill:'INVESTIGATING',cls:'po',color:'#FB923C'},
+    assessed:{title:'🚨 Critical Finding: Assessment Ready',pill:'AWAITING HUMAN APPROVAL',cls:'pr',color:'#F43F5E',goal:'Wait for human approval of the remediation proposal.'},
+    cleared:{title:'✅ Finding Closed: Not Affected',pill:'STOPPED · NO ACTION',cls:'pg',color:'#34D399',goal:'None. Investigation stopped, no remediation required.'},
+    escalated:{title:'⚠️ Finding Escalated to Human',pill:'ESCALATED',cls:'po',color:'#FB923C',goal:'Human security review of conflicting evidence.'},
+    remediating:{title:'⚙️ Remediation Running',pill:'EXECUTING',cls:'po',color:'#FB923C',goal:'Execute approved remediation under supervision.'},
+    verifying:{title:'🔍 Verifying Remediation',pill:'VERIFYING',cls:'po',color:'#FB923C',goal:'Independently verify the fix.'},
+    resolved:{title:'✅ Case Resolved',pill:'RESOLVED',cls:'pg',color:'#34D399',goal:'None. Fix verified and archived.'},
+    idle:{title:'Starting...',pill:'IDLE',cls:'py',color:'#3D2F27',goal:''}};
+  const ph=computed(()=>PH[c.phase]);
+  const tabs=[{k:'overview',i:'🏠',n:'Overview'},{k:'investigation',i:'🔍',n:'Investigation'},{k:'approval',i:'✍️',n:'Approval'},{k:'audit',i:'📜',n:'Audit'}];
+  const loop=['Review evidence','Find gaps','Select tool','Read result','Reassess'];
+  const ICON={'System':'⚙️','AI Agent':'🤖','Security Tool':'🔧','Human':'🧑‍💼'};
+  const steps=['Creating backup...','Executing predefined remediation...','Restarting service...','Checking service availability...'];
+  const classes=computed(()=>{const a=c.assessment||{};return[
+    {k:a.priority||'P0',n:'Priority',t:'Immediate Remediation',d:'Confirmed vulnerability with active exploitation evidence on an exposed production asset.',bg:'rgba(244,63,94,.2)',c:'#FB7185'},
+    {k:'C0',n:'Confidence',t:'Very High Confidence',d:'Multiple independent evidence sources consistently support the assessment.',bg:'rgba(52,211,153,.2)',c:'#34D399'},
+    {k:'A2',n:'Action Impact',t:'Consequential Action',d:'The remediation may modify a running production service and therefore requires explicit human approval.',bg:'rgba(251,146,60,.2)',c:'#FDBA74'}]});
+
+  const ts=adv=>{clock+=adv;const t=9*3600+12*60+1+clock;return [Math.floor(t/3600),Math.floor(t/60)%60,t%60].map(v=>String(v).padStart(2,'0')).join(':')};
+  const log=(actor,type,result,adv=1)=>audit.value.push({time:ts(adv),actor,type,result});
+  const note=m=>{toast.value=m;setTimeout(()=>toast.value='',2500)};
+  const vib=p=>{try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}};
+  const addEv=(src,short,type,finding,rel)=>{const e={id:'E-00'+(c.evidence.length+1),src,short,type,finding,rel,time:ts(0)};c.evidence.push(e);return e};
+
+  /* ---------- Agent runtime loop ---------- */
+  async function investigate(my){
+    const s=sc.value;
+    log('System','Scanner Finding received','CVE-2021-41773',0);
+    const e0=addEv('Vulnerability Scanner','Scanner Finding','Scanner Finding',s.scanner+' This is initial evidence only.','Medium');
+    feed.value.push({n:++n,kind:'evidence',e:e0});
+    while(my===run){
+      await sleep(1200);if(my!==run)return;
+      const d=decide(c,s);dno++;
+      if(d.decision==='INVESTIGATE'){
+        const T=TOOLS[d.tool];
+        feed.value.push({n:++n,kind:'decision',no:dno,decision:'INVESTIGATE',cls:'po',current:d.cur,missing:d.missing,rationale:d.rationale,tool:d.tool,toolWhy:T.why});
+        log('AI Agent','Agent Decision: INVESTIGATE → select '+d.tool,'Missing: '+d.missing[0]);
+        await sleep(900);if(my!==run)return;
+        const card=reactive({n:++n,kind:'tool',tool:d.tool,arg:d.tool==='lookup_kev'?'CVE-2021-41773':s.asset,status:'RUNNING',out:''});
+        feed.value.push(card);log('Security Tool','Tool Call: '+d.tool,'RUNNING');
+        await sleep(1400);if(my!==run)return;
+        const r=T.run(s.world);card.status=r.status;card.out=r.out;
+        Object.assign(c.facts,r.facts);
+        const ev=addEv(T.src,T.short,r.type,r.finding,r.rel);
+        log('Security Tool','Evidence Created: '+ev.id,r.status);
+        await sleep(700);if(my!==run)return;
+        feed.value.push({n:++n,kind:'evidence',e:ev});
+      }else{
+        feed.value.push({n:++n,kind:'decision',no:dno,decision:d.decision,cls:d.decision==='ESCALATE'?'po':'pg',current:d.cur,missing:d.missing,rationale:d.rationale,tool:null});
+        c.assessment=d.a;
+        const a=d.a;
+        c.phase=a.escalate?'escalated':a.stop?'cleared':'assessed';
+        log('AI Agent',a.escalate?'Agent Decision: ESCALATE':'Agent Assessment',`${a.status} / ${a.priority} / ${a.conf}`);
+        if(a.action) log('AI Agent','Remediation Proposed','A2 · awaiting human approval');
+        if(a.stop) log('AI Agent','Investigation stopped','No remediation required');
+        if(a.escalate) log('AI Agent','Human review requested','Auto-remediation blocked');
+        return;
+      }
+    }
+  }
+  function load(k){
+    key.value=k;run++;const my=run;clock=0;n=0;dno=0;
+    Object.assign(c,{phase:'investigating',evidence:[],facts:{},assessment:null,taken:false});
+    feed.value=[];audit.value=[];ex.step=-1;ex.ver=[];
+    investigate(my);
+  }
+  async function approve(){
+    vib([60,40,60]);const my=run;
+    log('Human','Human Approval','APPROVED',2);
+    c.phase='remediating';ex.step=0;
+    log('System','Controlled Remediation Started','EXECUTING');
+    for(let i=0;i<steps.length;i++){ex.step=i;await sleep(1100);if(my!==run)return}
+    ex.step=steps.length;log('System','Controlled Remediation Executed','SUCCESS');
+    c.phase='verifying';
+    log('Security Tool','Tool Call: verify_remediation','RUNNING');
+    const rows=[['Version Check','PATCHED'],['Vulnerability Validation','NOT VULNERABLE'],['Service Health','HEALTHY']];
+    for(const r of rows){await sleep(900);if(my!==run)return;ex.ver.push(r)}
+    await sleep(600);if(my!==run)return;
+    vib(200);c.phase='resolved';c.assessment={...c.assessment,status:'RESOLVED'};
+    log('Security Tool','Verification','PASSED',3);log('System','Case Status','RESOLVED');
+  }
+  function reject(){vib(30);log('Human','Human Decision','REJECTED · ESCALATED to analyst',2);c.phase='escalated';c.taken=true;note('Rejected. Case handed to a human analyst, nothing was executed.');page.value='overview'}
+  function takeOver(){c.taken=true;log('Human','Human Analyst took over case','ASSIGNED',2);note('Case assigned to a human analyst.')}
+
+  onMounted(()=>load('pos'));
+  return{SC,key,page,drawer,toast,c,sc,feed,audit,ex,bar,ph,tabs,loop,ICON,DEC,steps,classes,goal,load,approve,reject,takeOver}
+}}).mount('#app');
+</script>
+</body>
+</html>
